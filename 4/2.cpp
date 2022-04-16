@@ -53,6 +53,9 @@ int64_t calc_fun(const vector<node*>& ends) {
 }
 
 int main() {
+	ios::sync_with_stdio(false);
+	cin.tie(nullptr);
+
 	vector<node> nodes;
 	vector<node*> ends;
 
