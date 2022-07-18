@@ -1,4 +1,3 @@
-#define NDEBUG
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -63,15 +62,15 @@ const struct {
 } dyx[] = {{0, -1, 2}, {1, 0, 0}, {0, 1, 6}, {-1, 0, 4}};
 
 unsigned next_step(unsigned s) {
-	return (s + 1) % 4;
+	return (s + 1u) & 3u;
 }
 
 auto next_yx(uint16_t i, uint16_t j, unsigned s) {
-	return make_pair(i + dyx[s].y, j + dyx[s].x);
+	return make_pair(static_cast<uint16_t>(i + dyx[s].y), static_cast<uint16_t>(j + dyx[s].x));
 }
 
 auto prev_yx(uint16_t i, uint16_t j, unsigned s) {
-	return make_pair(i - dyx[s].y, j - dyx[s].x);
+	return make_pair(static_cast<uint16_t>(i - dyx[s].y), static_cast<uint16_t>(j - dyx[s].x));
 }
 
 vector<vector<mset>> m(max_n);
@@ -79,13 +78,10 @@ uint16_t last_i = center_i;
 uint16_t last_j = center_j;
 uint32_t last_v = max_n2;
 
-auto solve(const uint16_t n, const uint32_t k) {
-	assert(n % 2 == 1);
+void fill(const uint16_t n) {
 	const uint32_t n2 = n * n;
-	assert(k < n2 - 1 );
-
-	uint16_t i = last_i;
-	uint16_t j = last_j;
+	auto& i = last_i;
+	auto& j = last_j;
 	unsigned step = 3;
 	for (--last_v; last_v > max_n2 - n2; --last_v) {
 		const auto pi = i;
@@ -117,25 +113,31 @@ auto solve(const uint16_t n, const uint32_t k) {
 		cur.step = step;
 	}
 	++last_v;
-	last_i = i;
-	last_j = j;
+}
 
-	j = i = center_i - n / 2;
+auto solve(const uint16_t n, const uint32_t k) {
+	assert(n % 2 == 1);
+	assert(k < n * n - 1);
+
+	fill(n);
+
+	uint16_t i = center_i - (n >> 1u);
+	uint16_t j = i;
 	vector<pair<uint32_t, uint32_t>> res;
 	if (!m[i][j].contains(k))
 		return res;
 	uint32_t v = 1;
 	for (auto pk = k - 1; i != center_i || j != center_j; --pk) {
 		if (i == j && i < center_i) {
-			const auto n = 2 * (center_i - i) + 1;
-			const auto n2 = n * n;
-			const auto d = (n2 - pk) / 8 + 1;
-			const auto nn = 2 * d + 1;
+			const uint16_t n = ((center_i - i) << 1u) + 1u;
+			const uint32_t n2 = n * n;
+			const uint32_t r = ((n2 - pk) >> 3u) + 1u;
+			const uint32_t nn = (r << 1u) + 1u;
 			if (nn < n) {
-				const auto nn2 = nn * nn;
+				const uint32_t nn2 = nn * nn;
 				v += n2 - nn2;
 				pk -= n2 - nn2;
-				j = i = center_i - d;
+				j = i = center_i - r;
 				assert(m[i][j].contains(pk + 1));
 			}
 		}
@@ -146,9 +148,9 @@ auto solve(const uint16_t n, const uint32_t k) {
 			const auto ostep = next_step(cur.step);
 			const auto [ni, nj] = next_yx(i, j, ostep);
 			if (m[ni][nj].contains(pk)) {
-				const auto r = max(diff(i, center_i), diff(j, center_j)) + 1;
-				const auto n = 2 * r - 1;
-				const auto nv = v + 4 * n - 5 - dyx[ostep].z;
+				const auto r = max(diff(i, center_i), diff(j, center_j)) + 1u;
+				const uint16_t n = (r << 1u) - 1u;
+				const auto nv = v + (n << 2u) - 5u - dyx[ostep].z;
 				i = ni;
 				j = nj;		
 				res.emplace_back(v, nv);
@@ -180,7 +182,8 @@ int main() {
 	int t;
 	cin >> t;
 	for (int tn = 1; tn <= t; tn++) {
-		size_t n, k;
+		uint16_t n;
+	        uint32_t k;
 		cin >> n >> k;
 		cout << "Case #" << tn << ": ";
 		if (const auto as = solve(n, k); !as.empty()) {
